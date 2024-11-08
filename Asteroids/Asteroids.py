@@ -189,11 +189,12 @@ class Asteroid:
 
 # Create class bullet
 class Bullet:
-    def __init__(self, x, y, direction):
+    def __init__(self, x, y, direction, color=white):
         self.x = x
         self.y = y
         self.dir = direction
         self.life = 30
+        self.color = color  # Color del disparo
 
     def updateBullet(self):
         # Moving
@@ -201,7 +202,7 @@ class Bullet:
         self.y += bullet_speed * math.sin(self.dir * math.pi / 180)
 
         # Drawing
-        pygame.draw.circle(gameDisplay, white, (int(self.x), int(self.y)), 3)
+        pygame.draw.circle(gameDisplay, self.color, (int(self.x), int(self.y)), 3)
 
         # Wrapping
         if self.x > display_width:
@@ -339,9 +340,23 @@ class Player:
         self.dir = -90
         self.rtspd = 0
         self.thrust = False
+        self.infinite_ammo = False
+        self.ammo_timer = 0
+        self.invulnerable = False
+        self.inv_timer = 0
 
     def updatePlayer(self):
         # Move player
+        if self.infinite_ammo:
+            if self.ammo_timer > 0:
+                self.ammo_timer -= 1
+            else:
+                self.infinite_ammo = False
+        if self.invulnerable:
+            if self.inv_timer > 0:
+                self.inv_timer -= 1
+            else:
+                self.invulnerable = False
         speed = math.sqrt(self.hspeed**2 + self.vspeed**2)
         if self.thrust:
             if speed + fd_fric < player_max_speed:
@@ -389,33 +404,36 @@ class Player:
         y = self.y
         s = player_size
         t = self.thrust
-        # Draw player
-        pygame.draw.line(gameDisplay, white,
-                         (x - (s * math.sqrt(130) / 12) * math.cos(math.atan(7 / 9) + a),
-                          y - (s * math.sqrt(130) / 12) * math.sin(math.atan(7 / 9) + a)),
-                         (x + s * math.cos(a), y + s * math.sin(a)))
+        # Determinar el color
+        color = (0, 0, 255) if self.invulnerable else white
+        # Dibujar el jugador con el color correspondiente
+        pygame.draw.line(gameDisplay, color,
+                        (x - (s * math.sqrt(130) / 12) * math.cos(math.atan(7 / 9) + a),
+                        y - (s * math.sqrt(130) / 12) * math.sin(math.atan(7 / 9) + a)),
+                        (x + s * math.cos(a), y + s * math.sin(a)))
 
-        pygame.draw.line(gameDisplay, white,
-                         (x - (s * math.sqrt(130) / 12) * math.cos(math.atan(7 / 9) - a),
-                          y + (s * math.sqrt(130) / 12) * math.sin(math.atan(7 / 9) - a)),
-                         (x + s * math.cos(a), y + s * math.sin(a)))
+        pygame.draw.line(gameDisplay, color,
+                        (x - (s * math.sqrt(130) / 12) * math.cos(math.atan(7 / 9) - a),
+                        y + (s * math.sqrt(130) / 12) * math.sin(math.atan(7 / 9) - a)),
+                        (x + s * math.cos(a), y + s * math.sin(a)))
 
-        pygame.draw.line(gameDisplay, white,
-                         (x - (s * math.sqrt(2) / 2) * math.cos(a + math.pi / 4),
-                          y - (s * math.sqrt(2) / 2) * math.sin(a + math.pi / 4)),
-                         (x - (s * math.sqrt(2) / 2) * math.cos(-a + math.pi / 4),
-                          y + (s * math.sqrt(2) / 2) * math.sin(-a + math.pi / 4)))
+        pygame.draw.line(gameDisplay, color,
+                        (x - (s * math.sqrt(2) / 2) * math.cos(a + math.pi / 4),
+                        y - (s * math.sqrt(2) / 2) * math.sin(a + math.pi / 4)),
+                        (x - (s * math.sqrt(2) / 2) * math.cos(-a + math.pi / 4),
+                        y + (s * math.sqrt(2) / 2) * math.sin(-a + math.pi / 4)))
         if t:
-            pygame.draw.line(gameDisplay, white,
-                             (x - s * math.cos(a),
-                              y - s * math.sin(a)),
-                             (x - (s * math.sqrt(5) / 4) * math.cos(a + math.pi / 6),
-                              y - (s * math.sqrt(5) / 4) * math.sin(a + math.pi / 6)))
-            pygame.draw.line(gameDisplay, white,
-                             (x - s * math.cos(-a),
-                              y + s * math.sin(-a)),
-                             (x - (s * math.sqrt(5) / 4) * math.cos(-a + math.pi / 6),
-                              y + (s * math.sqrt(5) / 4) * math.sin(-a + math.pi / 6)))
+            pygame.draw.line(gameDisplay, color,
+                            (x - s * math.cos(a),
+                            y - s * math.sin(a)),
+                            (x - (s * math.sqrt(5) / 4) * math.cos(a + math.pi / 6),
+                            y - (s * math.sqrt(5) / 4) * math.sin(a + math.pi / 6)))
+            pygame.draw.line(gameDisplay, color,
+                            (x - s * math.cos(-a),
+                            y + s * math.sin(-a)),
+                            (x - (s * math.sqrt(5) / 4) * math.cos(-a + math.pi / 6),
+                            y + (s * math.sqrt(5) / 4) * math.sin(-a + math.pi / 6)))
+
 
     def killPlayer(self):
         # Reset the player
@@ -427,9 +445,32 @@ class Player:
         self.vspeed = 0
 
 
+# Clase PowerUp
+class PowerUp:
+    def __init__(self, x, y, power_type):
+        self.x = x
+        self.y = y
+        self.power_type = power_type  # 'ammo' o 'invulnerable'
+        if self.power_type == 'ammo':
+            self.color = (0, 255, 0)  # Verde para munición infinita
+        elif self.power_type == 'invulnerable':
+            self.color = (0, 0, 255)  # Azul para invulnerabilidad
+        self.size = 10  # Tamaño del poder
+
+    def updatePowerUp(self):
+        # Dibujar el poder
+        pygame.draw.circle(gameDisplay, self.color, (int(self.x), int(self.y)), self.size)
+
+    def isCollected(self, player_x, player_y):
+        # Verificar si el jugador ha recogido el poder
+        return isColliding(self.x, self.y, player_x, player_y, self.size + player_size)
+
+
+
 def gameLoop(startingState):
     # Init variables
     gameState = startingState
+    previous_gameState = None
     player_state = "Alive"
     player_blink = 0
     player_pieces = []
@@ -448,6 +489,8 @@ def gameLoop(startingState):
     intensity = 0
     player = Player(display_width / 2, display_height / 2)
     saucer = Saucer()
+    powerUps = []
+    powerUp_spawn_delay = 0
 
     # Menu options
     menu_options = ["Start", "Leaderboard", "Quit"]
@@ -455,6 +498,38 @@ def gameLoop(startingState):
 
     # Main loop
     while gameState != "Exit":
+        if powerUp_spawn_delay <= 0:
+            if random.randint(0, 1000) < 5:  # Ajusta la probabilidad según prefieras
+                # Generar un poder en una posición aleatoria
+                power_type = random.choice(['ammo', 'invulnerable'])
+                x = random.randint(0, display_width)
+                y = random.randint(0, display_height)
+                powerUps.append(PowerUp(x, y, power_type))
+                powerUp_spawn_delay = 500  # Esperar antes de generar otro poder
+        else:
+            powerUp_spawn_delay -= 1
+        if gameState != previous_gameState:
+            if gameState == "Playing":
+                # Reinicializar variables del juego
+                player_state = "Alive"
+                player_blink = 0
+                player_pieces = []
+                player_dying_delay = 0
+                player_invi_dur = 0
+                hyperspace = 0
+                next_level_delay = 0
+                bullet_capacity = 4
+                bullets = []
+                asteroids = []
+                stage = 3
+                score = 0
+                live = 2
+                oneUp_multiplier = 1
+                playOneUpSFX = 0
+                intensity = 0
+                player = Player(display_width / 2, display_height / 2)
+                saucer = Saucer()
+            previous_gameState = gameState
         # Game menu
         while gameState == "Menu":
             gameDisplay.fill(black)
@@ -503,9 +578,11 @@ def gameLoop(startingState):
                     player.rtspd = -player_max_rtspd
                 if event.key == pygame.K_RIGHT:
                     player.rtspd = player_max_rtspd
-                if event.key == pygame.K_SPACE and player_dying_delay == 0 and len(bullets) < bullet_capacity:
-                    bullets.append(Bullet(player.x, player.y, player.dir))
-                    pygame.mixer.Sound.play(snd_fire)
+                if event.key == pygame.K_SPACE and player_dying_delay == 0:
+                    if len(bullets) < bullet_capacity or player.infinite_ammo:
+                        bullet_color = (0, 255, 0) if player.infinite_ammo else white
+                        bullets.append(Bullet(player.x, player.y, player.dir, bullet_color))
+                        pygame.mixer.Sound.play(snd_fire)
                 if event.key == pygame.K_LSHIFT:
                     hyperspace = 30
             if event.type == pygame.KEYUP:
@@ -537,7 +614,7 @@ def gameLoop(startingState):
         # Check for collision w/ asteroid
         for a in asteroids:
             a.updateAsteroid()
-            if player_state != "Died":
+            if not player.invulnerable and player_state != "Died":
                 if isColliding(player.x, player.y, a.x, a.y, a.size):
                     # Create ship fragments
                     player_pieces.append(deadPlayer(player.x, player.y, 5 * player_size / (2 * math.cos(math.atan(1 / 3)))))
@@ -573,6 +650,19 @@ def gameLoop(startingState):
                         # Play SFX
                         pygame.mixer.Sound.play(snd_bangS)
                     asteroids.remove(a)
+
+            # Actualizar y dibujar los poderes
+        for power in powerUps:
+            power.updatePowerUp()
+            # Verificar si el jugador recoge el poder
+            if power.isCollected(player.x, player.y):
+                if power.power_type == 'ammo':
+                    player.infinite_ammo = True
+                    player.ammo_timer = 150  # 5 segundos a 30 FPS
+                elif power.power_type == 'invulnerable':
+                    player.invulnerable = True
+                    player.inv_timer = 150  # 5 segundos a 30 FPS
+                powerUps.remove(power)
 
         # Update ship fragments
         for f in player_pieces:
