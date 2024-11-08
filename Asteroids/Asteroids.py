@@ -2,8 +2,12 @@
 import pygame
 import math
 import random
+from leaderboard import load_leaderboard, update_leaderboard
 pygame.init()
+font_path = "Asteroids/Vectorb.ttf"
+custom_font = pygame.font.Font(font_path, 35)
 
+    
 # Initialize constants
 white = (255, 255, 255)
 red = (255, 0, 0)
@@ -27,24 +31,99 @@ pygame.display.set_caption("Asteroids")
 timer = pygame.time.Clock()
 
 # Import sound effects
-snd_fire = pygame.mixer.Sound("Sounds/fire.wav")
-snd_bangL = pygame.mixer.Sound("Sounds/bangLarge.wav")
-snd_bangM = pygame.mixer.Sound("Sounds/bangMedium.wav")
-snd_bangS = pygame.mixer.Sound("Sounds/bangSmall.wav")
-snd_extra = pygame.mixer.Sound("Sounds/extra.wav")
-snd_saucerB = pygame.mixer.Sound("Sounds/saucerBig.wav")
-snd_saucerS = pygame.mixer.Sound("Sounds/saucerSmall.wav")
+snd_fire = pygame.mixer.Sound("Asteroids/Sounds/fire.wav")
+snd_bangL = pygame.mixer.Sound("Asteroids/Sounds/bangLarge.wav")
+snd_bangM = pygame.mixer.Sound("Asteroids/Sounds/bangMedium.wav")
+snd_bangS = pygame.mixer.Sound("Asteroids/Sounds/bangSmall.wav")
+snd_extra = pygame.mixer.Sound("Asteroids/Sounds/extra.wav")
+snd_saucerB = pygame.mixer.Sound("Asteroids/Sounds/saucerBig.wav")
+snd_saucerS = pygame.mixer.Sound("Asteroids/Sounds/saucerSmall.wav")
 
-
-# Create function to draw texts
-def drawText(msg, color, x, y, s, center=True):
-    screen_text = pygame.font.SysFont("Calibri", s).render(msg, True, color)
+def drawText(msg, color, x, y, center=True):
+    screen_text = custom_font.render(msg, True, color)
     if center:
-        rect = screen_text.get_rect()
-        rect.center = (x, y)
+        rect = screen_text.get_rect(center=(x, y))
+        gameDisplay.blit(screen_text, rect)
     else:
-        rect = (x, y)
-    gameDisplay.blit(screen_text, rect)
+        gameDisplay.blit(screen_text, (x, y))
+
+def show_leaderboard():
+    gameDisplay.fill(black)
+    drawText("LEADERBOARD", white, display_width / 2, 50, 50)
+
+    leaderboard = load_leaderboard()
+    y_offset = 100
+    for i, entry in enumerate(leaderboard):
+        drawText(f"{i + 1}. {entry['name']} - {entry['score']}", white, display_width / 2, y_offset, 30)
+        y_offset += 40
+
+    drawText("Press any key to return to menu", white, display_width / 2, display_height - 50, 20)
+    pygame.display.update()
+
+    waiting = True
+    while waiting:
+        for event in pygame.event.get():
+            if event.type == pygame.KEYDOWN or event.type == pygame.QUIT:
+                waiting = False
+
+def navigable_menu():
+    menu_options = ["Start", "Leaderboard", "Quit"]
+    selected_option = 0  # Índice de la opción seleccionada
+
+    running = True
+    while running:
+        gameDisplay.fill(black)
+
+        # Dibujar las opciones del menú
+        for i, option in enumerate(menu_options):
+            color = white if i == selected_option else red
+            drawText(option, color, display_width / 2, display_height / 2 + i * 50, 40)
+
+        pygame.display.update()
+
+        # Manejo de eventos
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                quit()
+
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_UP:
+                    selected_option = (selected_option - 1) % len(menu_options)
+                elif event.key == pygame.K_DOWN:
+                    selected_option = (selected_option + 1) % len(menu_options)
+                elif event.key == pygame.K_RETURN:  # Seleccionar opción
+                    if menu_options[selected_option] == "Start":
+                        return "Playing"  # Inicia el juego
+                    elif menu_options[selected_option] == "Leaderboard":
+                        show_leaderboard()  # Muestra el Leaderboard
+                    elif menu_options[selected_option] == "Quit":
+                        pygame.quit()
+                        quit()
+
+
+def get_player_name():
+    name = ""
+    active = True
+    while active:
+        gameDisplay.fill(black)
+        drawText("Enter your name:", white, display_width / 2, display_height / 2 - 50, 50)
+        drawText(name, white, display_width / 2, display_height / 2, 50)
+        drawText("Press Enter to save", white, display_width / 2, display_height / 2 + 50, 20)
+        pygame.display.update()
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                quit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_RETURN:
+                    active = False
+                elif event.key == pygame.K_BACKSPACE:
+                    name = name[:-1]
+                else:
+                    name += event.unicode
+    return name
 
 
 # Create funtion to chek for collision
@@ -370,22 +449,50 @@ def gameLoop(startingState):
     player = Player(display_width / 2, display_height / 2)
     saucer = Saucer()
 
+    # Menu options
+    menu_options = ["Start", "Leaderboard", "Quit"]
+    selected_option = 0
+
     # Main loop
     while gameState != "Exit":
         # Game menu
         while gameState == "Menu":
             gameDisplay.fill(black)
-            drawText("ASTEROIDS", white, display_width / 2, display_height / 2, 100)
-            drawText("Press any key to START", white, display_width / 2, display_height / 2 + 100, 50)
+
+            # Draw menu options
+            for i, option in enumerate(menu_options):
+                color = white if i == selected_option else red
+                drawText(option, color, display_width / 2, display_height / 2 + i * 50, 40)
+
+            pygame.display.update()
+
+            # Menu navigation
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     gameState = "Exit"
                 if event.type == pygame.KEYDOWN:
-                    gameState = "Playing"
-            pygame.display.update()
-            timer.tick(5)
+                    if event.key == pygame.K_UP:
+                        selected_option = (selected_option - 1) % len(menu_options)
+                    elif event.key == pygame.K_DOWN:
+                        selected_option = (selected_option + 1) % len(menu_options)
+                    elif event.key == pygame.K_RETURN:  # Confirm selection
+                        if menu_options[selected_option] == "Start":
+                            gameState = "Playing"
+                        elif menu_options[selected_option] == "Leaderboard":
+                            show_leaderboard()
+                        elif menu_options[selected_option] == "Quit":
+                            gameState = "Exit"
+            timer.tick(10)
 
-        # User inputs
+        # Game Over handling
+        if gameState == "Game Over":
+            player_name = get_player_name()  # Solicita el nombre
+            update_leaderboard(player_name, score)  # Guarda el puntaje
+            show_leaderboard()  # Muestra el leaderboard
+            gameState = "Menu"  # Regresa al menú principal
+            continue
+
+        # User inputs (gameplay logic)
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 gameState = "Exit"
@@ -398,12 +505,7 @@ def gameLoop(startingState):
                     player.rtspd = player_max_rtspd
                 if event.key == pygame.K_SPACE and player_dying_delay == 0 and len(bullets) < bullet_capacity:
                     bullets.append(Bullet(player.x, player.y, player.dir))
-                    # Play SFX
                     pygame.mixer.Sound.play(snd_fire)
-                if gameState == "Game Over":
-                    if event.key == pygame.K_r:
-                        gameState = "Exit"
-                        gameLoop("Playing")
                 if event.key == pygame.K_LSHIFT:
                     hyperspace = 30
             if event.type == pygame.KEYUP:
@@ -412,7 +514,7 @@ def gameLoop(startingState):
                 if event.key == pygame.K_LEFT or event.key == pygame.K_RIGHT:
                     player.rtspd = 0
 
-        # Update player
+        # Gameplay logic (collisions, updates, rendering, etc.)
         player.updatePlayer()
 
         # Checking player invincible time
@@ -699,12 +801,10 @@ def gameLoop(startingState):
             else:
                 player.drawPlayer()
         else:
-            drawText("Game Over", white, display_width / 2, display_height / 2, 100)
-            drawText("Press \"R\" to restart!", white, display_width / 2, display_height / 2 + 100, 50)
             live = -1
 
         # Draw score
-        drawText(str(score), white, 60, 20, 40, False)
+        drawText(str(score), white, 60, 20, 40)
 
         # Draw Lives
         for l in range(live + 1):
