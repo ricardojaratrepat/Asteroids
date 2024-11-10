@@ -1,6 +1,6 @@
 import pygame
 from leaderboard import load_leaderboard, update_leaderboard
-from constants import gameDisplay, white, black, display_height, display_width, custom_font, red
+from constants import gameDisplay, white, black, display_height, display_width, font_path, red
 
 # Create funtion to chek for collision
 def isColliding(x, y, xTo, yTo, size):
@@ -9,8 +9,9 @@ def isColliding(x, y, xTo, yTo, size):
     return False
 
 
-def drawText(msg, color, x, y, center=True):
-    screen_text = custom_font.render(msg, True, color)
+def drawText(msg, color, x, y, size, center=True):
+    font = pygame.font.Font(font_path, size)
+    screen_text = font.render(msg, True, color)
     if center:
         rect = screen_text.get_rect(center=(x, y))
         gameDisplay.blit(screen_text, rect)
@@ -20,6 +21,7 @@ def drawText(msg, color, x, y, center=True):
 def show_leaderboard():
     gameDisplay.fill(black)
     drawText("LEADERBOARD", white, display_width / 2, 50, 50)
+
 
     leaderboard = load_leaderboard()
     y_offset = 100

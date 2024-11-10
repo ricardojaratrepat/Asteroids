@@ -39,9 +39,15 @@ class Player:
         self.ammo_timer = 0
         self.invulnerable = False
         self.inv_timer = 0
+        self.active_power = None  # Nombre del poder activo
+        self.power_timer = 0   
 
     def updatePlayer(self):
         # Move player
+        if self.power_timer > 0:
+            self.power_timer -= 1
+        else:
+            self.active_power = None
         if self.infinite_ammo:
             if self.ammo_timer > 0:
                 self.ammo_timer -= 1
